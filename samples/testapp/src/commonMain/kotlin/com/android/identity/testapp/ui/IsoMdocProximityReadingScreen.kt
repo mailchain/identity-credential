@@ -42,6 +42,33 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
@@ -74,31 +101,22 @@ import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
 import org.multipaz.util.fromBase64Url
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
-import kotlinx.datetime.toLocalDateTime
-import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.cards.InfoCard
 import org.multipaz.compose.cards.WarningCard
 import org.multipaz.compose.decodeImage
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.compose.qrcode.ScanQrCodeDialog
 import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.util.toBase64Url
+import kotlinx.coroutines.withContext
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 
 private data class ConnectionMethodPickerData(
     val showPicker: Boolean,
     val connectionMethods: List<MdocConnectionMethod>,
-    val continuation:  CancellableContinuation<MdocConnectionMethod?>,
+    val continuation: CancellableContinuation<MdocConnectionMethod?>,
 )
 
 private suspend fun selectConnectionMethod(
@@ -129,11 +147,13 @@ fun IsoMdocProximityReadingScreen(
     val availableRequests = mutableListOf<RequestPickerEntry>()
     for (documentType in TestAppUtils.provisionedDocumentTypes) {
         for (sampleRequest in documentType.cannedRequests) {
-            availableRequests.add(RequestPickerEntry(
-                displayName = "${documentType.displayName}: ${sampleRequest.displayName}",
-                documentType = documentType,
-                sampleRequest = sampleRequest
-            ))
+            availableRequests.add(
+                RequestPickerEntry(
+                    displayName = "${documentType.displayName}: ${sampleRequest.displayName}",
+                    documentType = documentType,
+                    sampleRequest = sampleRequest
+                )
+            )
         }
     }
     val dropdownExpanded = remember { mutableStateOf(false) }
@@ -228,7 +248,9 @@ fun IsoMdocProximityReadingScreen(
                         try {
                             doReaderFlow(
                                 app = app,
-                                encodedDeviceEngagement = ByteString(data.substring(5).fromBase64Url()),
+                                encodedDeviceEngagement = ByteString(
+                                    data.substring(5).fromBase64Url()
+                                ),
                                 existingTransport = null,
                                 handover = Simple.NULL,
                                 updateNfcDialogMessage = null,
@@ -298,7 +320,12 @@ fun IsoMdocProximityReadingScreen(
                     modifier = Modifier.weight(1.0f),
                     verticalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    ShowReaderResults(app, readerMostRecentDeviceResponse, readerSessionTranscript, eReaderKey.value!!)
+                    ShowReaderResults(
+                        app,
+                        readerMostRecentDeviceResponse,
+                        readerSessionTranscript,
+                        eReaderKey.value!!
+                    )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -402,7 +429,12 @@ fun IsoMdocProximityReadingScreen(
                     modifier = Modifier.weight(1.0f),
                     verticalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    ShowReaderResults(app, readerMostRecentDeviceResponse, readerSessionTranscript, eReaderKey.value!!)
+                    ShowReaderResults(
+                        app,
+                        readerMostRecentDeviceResponse,
+                        readerSessionTranscript,
+                        eReaderKey.value!!
+                    )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Column(
@@ -445,7 +477,8 @@ fun IsoMdocProximityReadingScreen(
 
                             coroutineScope.launch {
                                 try {
-                                    val negotiatedHandoverConnectionMethods = mutableListOf<MdocConnectionMethod>()
+                                    val negotiatedHandoverConnectionMethods =
+                                        mutableListOf<MdocConnectionMethod>()
                                     val bleUuid = UUID.randomUUID()
                                     if (app.settingsModel.readerBleCentralClientModeEnabled.value) {
                                         negotiatedHandoverConnectionMethods.add(
@@ -692,23 +725,29 @@ private suspend fun doReaderFlowWithTransport(
             }
             if (status == Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
                 showToast("Received session termination message from holder")
-                Logger.i(TAG, "Holder indicated they closed the connection. " +
-                        "Closing and ending reader loop")
+                Logger.i(
+                    TAG, "Holder indicated they closed the connection. " +
+                            "Closing and ending reader loop"
+                )
                 transport.close()
                 break
             }
             if (!allowMultipleRequests) {
                 showToast("Response received, closing connection")
-                Logger.i(TAG, "Holder did not indicate they are closing the connection. " +
-                        "Auto-close is enabled, so sending termination message, closing, and " +
-                        "ending reader loop")
+                Logger.i(
+                    TAG, "Holder did not indicate they are closing the connection. " +
+                            "Auto-close is enabled, so sending termination message, closing, and " +
+                            "ending reader loop"
+                )
                 transport.sendMessage(SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION))
                 transport.close()
                 break
             }
             showToast("Response received, keeping connection open")
-            Logger.i(TAG, "Holder did not indicate they are closing the connection. " +
-                    "Auto-close is not enabled so waiting for message from holder")
+            Logger.i(
+                TAG, "Holder did not indicate they are closing the connection. " +
+                        "Auto-close is not enabled so waiting for message from holder"
+            )
             // "Send additional request" and close buttons will act further on `transport`
         }
     } catch (_: MdocTransportClosedException) {
@@ -801,12 +840,16 @@ private fun ShowReaderResults(
             fontWeight = FontWeight.Bold,
         )
     } else {
-        val parser = DeviceResponseParser(
-            encodedDeviceResponse = deviceResponse1,
-            encodedSessionTranscript = readerSessionTranscript.value!!,
-        )
-        parser.setEphemeralReaderKey(eReaderKey)
-        val deviceResponse2 = parser.parse()
+        // Only parse when inputs change
+        val deviceResponse2 = remember(deviceResponse1, readerSessionTranscript.value, eReaderKey) {
+            val parser = DeviceResponseParser(
+                encodedDeviceResponse = deviceResponse1,
+                encodedSessionTranscript = readerSessionTranscript.value!!,
+            )
+            parser.setEphemeralReaderKey(eReaderKey)
+            Logger.i(TAG, "DeviceResponseParser")
+            parser.parse()
+        }
         if (deviceResponse2.documents.isEmpty()) {
             Text(
                 text = "No documents in response",
@@ -823,7 +866,10 @@ private fun ShowReaderResults(
                     documentDataState.value = DocumentData.fromMdocDeviceResponseDocument(
                         doc,
                         app.documentTypeRepository,
-                        app.issuerTrustManager
+                        app.issuerTrustManager,
+                        deviceResponse1,
+                        readerSessionTranscript.value!!,
+                        eReaderKey
                     )
                 }
             }
@@ -846,7 +892,8 @@ private fun ShowKeyValuePair(kvPair: DocumentKeyValuePair) {
     Column(
         Modifier
             .padding(8.dp)
-            .fillMaxWidth()) {
+            .fillMaxWidth()
+    ) {
         Text(
             text = kvPair.key,
             fontWeight = FontWeight.Bold,
@@ -926,29 +973,69 @@ private data class DocumentData(
         suspend fun fromMdocDeviceResponseDocument(
             document: DeviceResponseParser.Document,
             documentTypeRepository: DocumentTypeRepository,
-            issuerTrustManager: TrustManager
+            issuerTrustManager: TrustManager,
+            encodedDeviceResponse: ByteArray,
+            encodedSessionTranscript: ByteArray,
+            eReaderKey: EcPrivateKey
         ): DocumentData {
             val infos = mutableListOf<String>()
             val warnings = mutableListOf<String>()
             val kvPairs = mutableListOf<DocumentKeyValuePair>()
 
-            // Placeholder for async API call
+            // Sample Ktor HttpClient POST call (fill in parameters as needed)
+            val httpClient = HttpClient(CIO) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true })
+                }
+            }
             try {
-                // Example: Replace with real API call
-                // val apiResult = withContext(Dispatchers.IO) { myApi.getSomething() }
-                // if (apiResult.shouldWarn) warnings.add("API returned a warning!")
+                val response: HttpResponse = withContext(Dispatchers.IO) {
+                    httpClient.post("https://psychiatric-ivory-penguin-750.verifier.service.eu.vidos.dev/vidos/verifier/draft/verify") {
+                        contentType(ContentType.Application.Json)
+                        bearerAuth("fd45b911ef2442201ec562477217a3b4f307998cfa7ede4d0afc22d35ac90923")
+                        setBody(
+                            VidosVerifierRequestBody(
+                                credential = encodedDeviceResponse.toBase64Url(),
+                                policyParams = PolicyParamsBody(
+                                    proof = ProofBody(
+                                        mdl = MdlProofBody(
+                                            encodedSessionTranscript = encodedSessionTranscript.toBase64Url(),
+                                            ephemeralReaderKey = Cbor.encode(
+                                                eReaderKey.toCoseKey().toDataItem()
+                                            ).toBase64Url()
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    }
+                }
+                if (response.status.isSuccess()) {
+                    Logger.i(TAG, "API call succeeded with status ${response.status}")
+                    Logger.i(TAG, "Response: ${response.bodyAsText()}")
+                    // Example: parse response and add info/warning
+                    // val responseBody = response.bodyAsText()
+                    // infos.add("API call succeeded: $responseBody")
+                } else {
+                    warnings.add("API call failed: ${response.status}")
+                }
             } catch (e: Exception) {
                 warnings.add("Network error: ${e.message}")
+            } finally {
+                httpClient.close()
             }
 
             if (document.issuerSignedAuthenticated) {
-                val trustResult = issuerTrustManager.verify(document.issuerCertificateChain.certificates)
+                val trustResult =
+                    issuerTrustManager.verify(document.issuerCertificateChain.certificates)
                 if (trustResult.isTrusted) {
                     if (trustResult.trustPoints[0].displayName != null) {
                         infos.add("Issuer '${trustResult.trustPoints[0].displayName}' is in a trust list")
                     } else {
-                        infos.add("Issuer with name '${trustResult.trustPoints[0].certificate.subject.name}' " +
-                                "is in a trust list")
+                        infos.add(
+                            "Issuer with name '${trustResult.trustPoints[0].certificate.subject.name}' " +
+                                    "is in a trust list"
+                        )
                     }
                 } else {
                     warnings.add("Issuer is not in trust list")
@@ -970,19 +1057,31 @@ private data class DocumentData(
 
             kvPairs.add(DocumentKeyValuePair("Type", "ISO mdoc (ISO/IEC 18013-5:2021)"))
             kvPairs.add(DocumentKeyValuePair("DocType", document.docType))
-            kvPairs.add(DocumentKeyValuePair("Valid From", formatTime(document.validityInfoValidFrom)))
-            kvPairs.add(DocumentKeyValuePair("Valid Until", formatTime(document.validityInfoValidUntil)))
+            kvPairs.add(
+                DocumentKeyValuePair(
+                    "Valid From",
+                    formatTime(document.validityInfoValidFrom)
+                )
+            )
+            kvPairs.add(
+                DocumentKeyValuePair(
+                    "Valid Until",
+                    formatTime(document.validityInfoValidUntil)
+                )
+            )
             kvPairs.add(DocumentKeyValuePair("Signed At", formatTime(document.validityInfoSigned)))
-            kvPairs.add(DocumentKeyValuePair(
+            kvPairs.add(
+                DocumentKeyValuePair(
                 "Expected Update",
                 document.validityInfoExpectedUpdate?.let { formatTime(it) } ?: "Not Set"
             ))
 
-            val mdocType = documentTypeRepository.getDocumentTypeForMdoc(document.docType)?.mdocDocumentType
+            val mdocType =
+                documentTypeRepository.getDocumentTypeForMdoc(document.docType)?.mdocDocumentType
 
             // TODO: Handle DeviceSigned data
             for (namespaceName in document.issuerNamespaces) {
-                val mdocNamespace = if (mdocType !=null) {
+                val mdocNamespace = if (mdocType != null) {
                     mdocType.namespaces.get(namespaceName)
                 } else {
                     // Some DocTypes not known by [documentTypeRepository] - could be they are
@@ -996,7 +1095,8 @@ private data class DocumentData(
                 kvPairs.add(DocumentKeyValuePair("Namespace", namespaceName))
                 for (dataElementName in document.getIssuerEntryNames(namespaceName)) {
                     val mdocDataElement = mdocNamespace?.dataElements?.get(dataElementName)
-                    val encodedDataElementValue = document.getIssuerEntryData(namespaceName, dataElementName)
+                    val encodedDataElementValue =
+                        document.getIssuerEntryData(namespaceName, dataElementName)
                     val dataElement = Cbor.decode(encodedDataElementValue)
                     var bitmap: ImageBitmap? = null
                     val (key, value) = if (mdocDataElement != null) {
@@ -1004,8 +1104,10 @@ private data class DocumentData(
                             try {
                                 bitmap = decodeImage(dataElement.value)
                             } catch (e: Throwable) {
-                                Logger.w(TAG, "Error decoding image for data element $dataElement in " +
-                                        "namespace $namespaceName", e)
+                                Logger.w(
+                                    TAG, "Error decoding image for data element $dataElement in " +
+                                            "namespace $namespaceName", e
+                                )
                             }
                         }
                         Pair(
@@ -1045,7 +1147,25 @@ private fun formatTime(instant: Instant): String {
     return isoStr.substring(0, 10) + " " + isoStr.substring(11)
 }
 
+@Serializable
+data class MdlProofBody(
+    val encodedSessionTranscript: String,
+    val ephemeralReaderKey: String
+)
 
+@Serializable
+data class ProofBody(
+    val mdl: MdlProofBody
+)
 
+@Serializable
+data class PolicyParamsBody(
+    val proof: ProofBody
+)
 
+@Serializable
+data class VidosVerifierRequestBody(
+    val credential: String,
+    val policyParams: PolicyParamsBody
+)
 
