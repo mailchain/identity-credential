@@ -222,6 +222,7 @@ fun IsoMdocProximityReadingScreen(
             dismissButton = "Close",
             onCodeScanned = { data ->
                 if (data.startsWith("mdoc:")) {
+                    Logger.i(TAG, "mdocData: ${data}")
                     readerShowQrScanner.value = false
                     readerJob = coroutineScope.launch() {
                         try {
@@ -789,6 +790,10 @@ private fun ShowReaderResults(
     eReaderKey: EcPrivateKey
 ) {
     val deviceResponse1 = readerMostRecentDeviceResponse.value
+    val coroutineScope = rememberCoroutineScope()
+    val documentDataState = remember { mutableStateOf<DocumentData?>(null) }
+    val lastDocHash = remember { mutableStateOf<Int?>(null) }
+
     if (deviceResponse1 == null || deviceResponse1.isEmpty()) {
         Text(
             text = "Waiting for data",
@@ -809,13 +814,29 @@ private fun ShowReaderResults(
                 fontWeight = FontWeight.Bold,
             )
         } else {
-            // TODO: show multiple documents
-            val documentData = DocumentData.fromMdocDeviceResponseDocument(
-                deviceResponse2.documents[0],
-                app.documentTypeRepository,
-                app.issuerTrustManager
-            )
-            ShowDocumentData(documentData, 0, deviceResponse2.documents.size)
+            val doc = deviceResponse2.documents[0]
+            val docHash = doc.hashCode()
+            if (lastDocHash.value != docHash) {
+                lastDocHash.value = docHash
+                documentDataState.value = null
+                coroutineScope.launch {
+                    documentDataState.value = DocumentData.fromMdocDeviceResponseDocument(
+                        doc,
+                        app.documentTypeRepository,
+                        app.issuerTrustManager
+                    )
+                }
+            }
+            val documentData = documentDataState.value
+            if (documentData == null) {
+                Text(
+                    text = "Loading document data...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            } else {
+                ShowDocumentData(documentData, 0, deviceResponse2.documents.size)
+            }
         }
     }
 }
@@ -902,7 +923,7 @@ private data class DocumentData(
 ) {
     companion object {
 
-        fun fromMdocDeviceResponseDocument(
+        suspend fun fromMdocDeviceResponseDocument(
             document: DeviceResponseParser.Document,
             documentTypeRepository: DocumentTypeRepository,
             issuerTrustManager: TrustManager
@@ -910,6 +931,15 @@ private data class DocumentData(
             val infos = mutableListOf<String>()
             val warnings = mutableListOf<String>()
             val kvPairs = mutableListOf<DocumentKeyValuePair>()
+
+            // Placeholder for async API call
+            try {
+                // Example: Replace with real API call
+                // val apiResult = withContext(Dispatchers.IO) { myApi.getSomething() }
+                // if (apiResult.shouldWarn) warnings.add("API returned a warning!")
+            } catch (e: Exception) {
+                warnings.add("Network error: ${e.message}")
+            }
 
             if (document.issuerSignedAuthenticated) {
                 val trustResult = issuerTrustManager.verify(document.issuerCertificateChain.certificates)
@@ -1014,5 +1044,8 @@ private fun formatTime(instant: Instant): String {
     // Get rid of the middle 'T'
     return isoStr.substring(0, 10) + " " + isoStr.substring(11)
 }
+
+
+
 
 
