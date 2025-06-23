@@ -113,6 +113,11 @@ import kotlinx.coroutines.withContext
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 
+private const val VIDOS_API_KEY = "0063632ec2963446b06ca148c7f06f3e80676023d8cfed30633668fa6bdc2fa0"
+private const val GATEWAY_URL = "https://44a1-46-217-81-130.ngrok-free.app"
+private const val VERIFIER_URL = "${GATEWAY_URL}/verifier"
+private const val VALIDATOR_URL = "${GATEWAY_URL}/validator"
+
 private data class ConnectionMethodPickerData(
     val showPicker: Boolean,
     val connectionMethods: List<MdocConnectionMethod>,
@@ -323,6 +328,13 @@ fun IsoMdocProximityReadingScreen(
                     ShowReaderResults(
                         app,
                         readerMostRecentDeviceResponse,
+                        encodedDeviceRequest = TestAppUtils.generateEncodedDeviceRequest(
+                            request = selectedRequest.value.sampleRequest,
+                            encodedSessionTranscript = readerSessionTranscript.value!!,
+                            readerKey = app.readerKey,
+                            readerCert = app.readerCert,
+                            readerRootCert = app.readerRootCert
+                        ),
                         readerSessionTranscript,
                         eReaderKey.value!!
                     )
@@ -432,6 +444,13 @@ fun IsoMdocProximityReadingScreen(
                     ShowReaderResults(
                         app,
                         readerMostRecentDeviceResponse,
+                        encodedDeviceRequest = TestAppUtils.generateEncodedDeviceRequest(
+                            request = selectedRequest.value.sampleRequest,
+                            encodedSessionTranscript = readerSessionTranscript.value!!,
+                            readerKey = app.readerKey,
+                            readerCert = app.readerCert,
+                            readerRootCert = app.readerRootCert
+                        ),
                         readerSessionTranscript,
                         eReaderKey.value!!
                     )
@@ -825,6 +844,7 @@ private fun RequestPicker(
 private fun ShowReaderResults(
     app: App,
     readerMostRecentDeviceResponse: MutableState<ByteArray?>,
+    encodedDeviceRequest: ByteArray,
     readerSessionTranscript: MutableState<ByteArray?>,
     eReaderKey: EcPrivateKey
 ) {
@@ -867,6 +887,7 @@ private fun ShowReaderResults(
                         doc,
                         app.documentTypeRepository,
                         app.issuerTrustManager,
+                        encodedDeviceRequest,
                         deviceResponse1,
                         readerSessionTranscript.value!!,
                         eReaderKey
@@ -974,6 +995,7 @@ private data class DocumentData(
             document: DeviceResponseParser.Document,
             documentTypeRepository: DocumentTypeRepository,
             issuerTrustManager: TrustManager,
+            encodedDeviceRequest: ByteArray,
             encodedDeviceResponse: ByteArray,
             encodedSessionTranscript: ByteArray,
             eReaderKey: EcPrivateKey
@@ -989,10 +1011,10 @@ private data class DocumentData(
                 }
             }
             try {
-                val response: HttpResponse = withContext(Dispatchers.IO) {
-                    httpClient.post("https://psychiatric-ivory-penguin-750.verifier.service.eu.vidos.dev/vidos/verifier/draft/verify") {
+                val verifierResponse: HttpResponse = withContext(Dispatchers.IO) {
+                    httpClient.post("${VERIFIER_URL}/vidos/verifier/draft/verify") {
                         contentType(ContentType.Application.Json)
-                        bearerAuth("fd45b911ef2442201ec562477217a3b4f307998cfa7ede4d0afc22d35ac90923")
+                        bearerAuth(VIDOS_API_KEY)
                         setBody(
                             VidosVerifierRequestBody(
                                 credential = encodedDeviceResponse.toBase64Url(),
@@ -1010,20 +1032,46 @@ private data class DocumentData(
                         )
                     }
                 }
-                if (response.status.isSuccess()) {
-                    Logger.i(TAG, "API call succeeded with status ${response.status}")
-                    Logger.i(TAG, "Response: ${response.bodyAsText()}")
+                if (verifierResponse.status.isSuccess()) {
+                    Logger.i(TAG, "Verifier API call succeeded with status ${verifierResponse.status}")
+                    Logger.i(TAG, "Verifier Response: ${verifierResponse.bodyAsText()}")
                     // Example: parse response and add info/warning
                     // val responseBody = response.bodyAsText()
                     // infos.add("API call succeeded: $responseBody")
                 } else {
-                    warnings.add("API call failed: ${response.status}")
+                    warnings.add("API call failed: ${verifierResponse.status}")
                 }
             } catch (e: Exception) {
                 warnings.add("Network error: ${e.message}")
-            } finally {
-                httpClient.close()
             }
+            try {
+                val validatorResponse: HttpResponse = withContext(Dispatchers.IO) {
+                    httpClient.post("${VALIDATOR_URL}/vidos/validator/draft/validate") {
+                        contentType(ContentType.Application.Json)
+                        bearerAuth(VIDOS_API_KEY)
+                        setBody(
+                            VidosValidatorRequestBody(
+                                type = "ISO18013-5.DeviceRequest",
+                                device_request = encodedDeviceRequest.toBase64Url(),
+                                device_response = encodedDeviceResponse.toBase64Url()
+                            )
+                        )
+                    }
+                }
+                if (validatorResponse.status.isSuccess()) {
+                    Logger.i(TAG, "Validator API call succeeded with status ${validatorResponse.status}")
+                    Logger.i(TAG, "Validator Response: ${validatorResponse.bodyAsText()}")
+                    // Example: parse response and add info/warning
+                    // val responseBody = response.bodyAsText()
+                    // infos.add("API call succeeded: $responseBody")
+                } else {
+                    warnings.add("API call failed: ${validatorResponse.status}")
+                }
+            } catch (e: Exception) {
+                warnings.add("Network error: ${e.message}")
+            }
+
+            httpClient.close()
 
             if (document.issuerSignedAuthenticated) {
                 val trustResult =
@@ -1167,5 +1215,12 @@ data class PolicyParamsBody(
 data class VidosVerifierRequestBody(
     val credential: String,
     val policyParams: PolicyParamsBody
+)
+
+@Serializable
+data class VidosValidatorRequestBody(
+    val type: String,
+    val device_response: String,
+    val device_request: String
 )
 
