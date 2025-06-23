@@ -114,7 +114,7 @@ import kotlinx.coroutines.withContext
 private const val TAG = "IsoMdocProximityReadingScreen"
 
 private const val VIDOS_API_KEY = "0063632ec2963446b06ca148c7f06f3e80676023d8cfed30633668fa6bdc2fa0"
-private const val GATEWAY_URL = "https://44a1-46-217-81-130.ngrok-free.app"
+private const val GATEWAY_URL = "https://barely-certain-mammoth.ngrok-free.app"
 private const val VERIFIER_URL = "${GATEWAY_URL}/verifier"
 private const val VALIDATOR_URL = "${GATEWAY_URL}/validator"
 
