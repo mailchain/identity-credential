@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
@@ -110,6 +111,7 @@ import org.multipaz.compose.qrcode.ScanQrCodeDialog
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.util.toBase64Url
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 
@@ -1033,11 +1035,8 @@ private data class DocumentData(
                     }
                 }
                 if (verifierResponse.status.isSuccess()) {
-                    Logger.i(TAG, "Verifier API call succeeded with status ${verifierResponse.status}")
-                    Logger.i(TAG, "Verifier Response: ${verifierResponse.bodyAsText()}")
-                    // Example: parse response and add info/warning
-                    // val responseBody = response.bodyAsText()
-                    // infos.add("API call succeeded: $responseBody")
+                    val verifierResponseBody = verifierResponse.body<VidosResponseBody>()
+                    handleVidosResults(verifierResponseBody, infos, warnings)
                 } else {
                     warnings.add("API call failed: ${verifierResponse.status}")
                 }
@@ -1059,11 +1058,8 @@ private data class DocumentData(
                     }
                 }
                 if (validatorResponse.status.isSuccess()) {
-                    Logger.i(TAG, "Validator API call succeeded with status ${validatorResponse.status}")
-                    Logger.i(TAG, "Validator Response: ${validatorResponse.bodyAsText()}")
-                    // Example: parse response and add info/warning
-                    // val responseBody = response.bodyAsText()
-                    // infos.add("API call succeeded: $responseBody")
+                    val validatorResponseBody = validatorResponse.body<VidosResponseBody>()
+                    handleVidosResults(validatorResponseBody, infos, warnings)
                 } else {
                     warnings.add("API call failed: ${validatorResponse.status}")
                 }
@@ -1073,22 +1069,22 @@ private data class DocumentData(
 
             httpClient.close()
 
-            if (document.issuerSignedAuthenticated) {
-                val trustResult =
-                    issuerTrustManager.verify(document.issuerCertificateChain.certificates)
-                if (trustResult.isTrusted) {
-                    if (trustResult.trustPoints[0].displayName != null) {
-                        infos.add("Issuer '${trustResult.trustPoints[0].displayName}' is in a trust list")
-                    } else {
-                        infos.add(
-                            "Issuer with name '${trustResult.trustPoints[0].certificate.subject.name}' " +
-                                    "is in a trust list"
-                        )
-                    }
-                } else {
-                    warnings.add("Issuer is not in trust list")
-                }
-            }
+//            if (document.issuerSignedAuthenticated) {
+//                val trustResult =
+//                    issuerTrustManager.verify(document.issuerCertificateChain.certificates)
+//                if (trustResult.isTrusted) {
+//                    if (trustResult.trustPoints[0].displayName != null) {
+//                        infos.add("Issuer '${trustResult.trustPoints[0].displayName}' is in a trust list")
+//                    } else {
+//                        infos.add(
+//                            "Issuer with name '${trustResult.trustPoints[0].certificate.subject.name}' " +
+//                                    "is in a trust list"
+//                        )
+//                    }
+//                } else {
+//                    warnings.add("Issuer is not in trust list")
+//                }
+//            }
             if (!document.deviceSignedAuthenticated) {
                 warnings.add("Device Authentication failed")
             }
@@ -1182,6 +1178,22 @@ private data class DocumentData(
     }
 }
 
+fun handleVidosResults(
+    vidosResponseBody: VidosResponseBody,
+    infos: MutableList<String>,
+    warnings: MutableList<String>
+) {
+    for (verifierPolicyResult in vidosResponseBody.results) {
+        if (verifierPolicyResult.status == "success") {
+            infos.add("${verifierPolicyResult.service}:${verifierPolicyResult.policy} - SUCCESS")
+        } else if (verifierPolicyResult.status == "error") {
+            warnings.add(
+                "${verifierPolicyResult.service}:${verifierPolicyResult.policy} - ERROR: ${verifierPolicyResult.error?.type}"
+            )
+        }
+    }
+}
+
 private data class DocumentKeyValuePair(
     val key: String,
     val textValue: String,
@@ -1216,6 +1228,27 @@ data class VidosVerifierRequestBody(
     val credential: String,
     val policyParams: PolicyParamsBody
 )
+
+@Serializable
+data class VidosResponseBody(
+    val results: List<VidosPolicyResult>
+)
+
+@Serializable
+data class VidosPolicyResult(
+    val service: String,
+    val policy: String,
+    val path: List<String>,
+    val status: String,
+    val data: JsonObject? = null,
+    val error: VidosPolicyErrorResult? = null
+)
+
+@Serializable
+data class VidosPolicyErrorResult(
+    val type: String,
+)
+
 
 @Serializable
 data class VidosValidatorRequestBody(
