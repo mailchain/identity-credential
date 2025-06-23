@@ -125,47 +125,47 @@ fun StartScreen(
                     }
                 }
 
-                item {
-                    TextButton(onClick = onClickSoftwareSecureArea) {
-                        Text(stringResource(Res.string.software_secure_area_screen_title))
-                    }
-                }
-
-                when (platform) {
-                    Platform.ANDROID -> {
-                        item {
-                            TextButton(onClick = onClickAndroidKeystoreSecureArea) {
-                                Text(stringResource(Res.string.android_keystore_secure_area_screen_title))
-                            }
-                        }
-                    }
-
-                    Platform.IOS -> {
-                        item {
-                            TextButton(onClick = onClickSecureEnclaveSecureArea) {
-                                Text(stringResource(Res.string.secure_enclave_secure_area_screen_title))
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickCloudSecureArea) {
-                        Text(stringResource(Res.string.cloud_secure_area_screen_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickPassphraseEntryField) {
-                        Text(stringResource(Res.string.passphrase_entry_field_screen_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickPassphrasePrompt) {
-                        Text(stringResource(Res.string.passphrase_prompt_screen_title))
-                    }
-                }
+//                item {
+//                    TextButton(onClick = onClickSoftwareSecureArea) {
+//                        Text(stringResource(Res.string.software_secure_area_screen_title))
+//                    }
+//                }
+//
+//                when (platform) {
+//                    Platform.ANDROID -> {
+//                        item {
+//                            TextButton(onClick = onClickAndroidKeystoreSecureArea) {
+//                                Text(stringResource(Res.string.android_keystore_secure_area_screen_title))
+//                            }
+//                        }
+//                    }
+//
+//                    Platform.IOS -> {
+//                        item {
+//                            TextButton(onClick = onClickSecureEnclaveSecureArea) {
+//                                Text(stringResource(Res.string.secure_enclave_secure_area_screen_title))
+//                            }
+//                        }
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickCloudSecureArea) {
+//                        Text(stringResource(Res.string.cloud_secure_area_screen_title))
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickPassphraseEntryField) {
+//                        Text(stringResource(Res.string.passphrase_entry_field_screen_title))
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickPassphrasePrompt) {
+//                        Text(stringResource(Res.string.passphrase_prompt_screen_title))
+//                    }
+//                }
 
                 /*
                 // Not useful yet
@@ -176,21 +176,21 @@ fun StartScreen(
                 }
                  */
 
-                item {
-                    TextButton(onClick = onClickConsentSheetList) {
-                        Text(stringResource(Res.string.consent_modal_bottom_sheet_list_screen_title))
-                    }
-                }
-                item {
-                    TextButton(onClick = onClickQrCodes) {
-                        Text(stringResource(Res.string.qr_codes_screen_title))
-                    }
-                }
-                item {
-                    TextButton(onClick = onClickNfc) {
-                        Text(stringResource(Res.string.nfc_screen_title))
-                    }
-                }
+//                item {
+//                    TextButton(onClick = onClickConsentSheetList) {
+//                        Text(stringResource(Res.string.consent_modal_bottom_sheet_list_screen_title))
+//                    }
+//                }
+//                item {
+//                    TextButton(onClick = onClickQrCodes) {
+//                        Text(stringResource(Res.string.qr_codes_screen_title))
+//                    }
+//                }
+//                item {
+//                    TextButton(onClick = onClickNfc) {
+//                        Text(stringResource(Res.string.nfc_screen_title))
+//                    }
+//                }
                 item {
                     TextButton(onClick = onClickIsoMdocProximitySharing) {
                         Text(stringResource(Res.string.iso_mdoc_proximity_sharing_title))
@@ -203,53 +203,53 @@ fun StartScreen(
                     }
                 }
 
-                item {
-                    TextButton(onClick = onClickMdocTransportMultiDeviceTesting) {
-                        Text(stringResource(Res.string.iso_mdoc_multi_device_testing_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickCertificatesViewerExamples) {
-                        Text(stringResource(Res.string.certificate_viewer_examples_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickRichText) {
-                        Text(stringResource(Res.string.rich_text_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickNotifications) {
-                        Text(stringResource(Res.string.notifications_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickScreenLock) {
-                        Text(stringResource(Res.string.screen_lock_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickCamera) {
-                        Text(stringResource(Res.string.camera_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickFaceDetection) {
-                        Text(stringResource(Res.string.face_detection_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickBarcodeScanning) {
-                        Text(stringResource(Res.string.barcode_scanning_title))
-                    }
-                }
+//                item {
+//                    TextButton(onClick = onClickMdocTransportMultiDeviceTesting) {
+//                        Text(stringResource(Res.string.iso_mdoc_multi_device_testing_title))
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickCertificatesViewerExamples) {
+//                        Text(stringResource(Res.string.certificate_viewer_examples_title))
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickRichText) {
+//                        Text(stringResource(Res.string.rich_text_title))
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickNotifications) {
+//                        Text(stringResource(Res.string.notifications_title))
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickScreenLock) {
+//                        Text(stringResource(Res.string.screen_lock_title))
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickCamera) {
+//                        Text(stringResource(Res.string.camera_title))
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickFaceDetection) {
+//                        Text(stringResource(Res.string.face_detection_title))
+//                    }
+//                }
+//
+//                item {
+//                    TextButton(onClick = onClickBarcodeScanning) {
+//                        Text(stringResource(Res.string.barcode_scanning_title))
+//                    }
+//                }
             }
         }
     }
