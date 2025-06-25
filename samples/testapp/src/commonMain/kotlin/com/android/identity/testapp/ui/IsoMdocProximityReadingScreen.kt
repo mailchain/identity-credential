@@ -1016,7 +1016,7 @@ private data class DocumentData(
             }
             try {
                 val verifierResponse: HttpResponse = withContext(Dispatchers.IO) {
-                    httpClient.post(vidosVerifierUrl) {
+                    httpClient.post("${vidosVerifierUrl}/vidos/verifier/draft/verify") {
                         contentType(ContentType.Application.Json)
                         bearerAuth(vidosServiceApiKey)
                         setBody(
@@ -1036,18 +1036,18 @@ private data class DocumentData(
                         )
                     }
                 }
-                if (verifierResponse.status.isSuccess()) {
+                if (verifierResponse.status.value == 200 || verifierResponse.status.value == 422) {
                     val verifierResponseBody = verifierResponse.body<VidosResponseBody>()
                     handleVidosResults(verifierResponseBody, infos, warnings)
                 } else {
-                    warnings.add("API call failed: ${verifierResponse.status}")
+                    warnings.add("VERIFIER API call failed: ${verifierResponse.status}")
                 }
             } catch (e: Exception) {
-                warnings.add("Network error: ${e.message}")
+                warnings.add("VERIFIER Network error: ${e.message}")
             }
             try {
                 val validatorResponse: HttpResponse = withContext(Dispatchers.IO) {
-                    httpClient.post(vidosValidatorUrl) {
+                    httpClient.post("${vidosValidatorUrl}/vidos/validator/draft/validate") {
                         contentType(ContentType.Application.Json)
                         bearerAuth(vidosServiceApiKey)
                         setBody(
@@ -1059,14 +1059,14 @@ private data class DocumentData(
                         )
                     }
                 }
-                if (validatorResponse.status.isSuccess()) {
+                if (validatorResponse.status.value == 200 || validatorResponse.status.value == 422) {
                     val validatorResponseBody = validatorResponse.body<VidosResponseBody>()
                     handleVidosResults(validatorResponseBody, infos, warnings)
                 } else {
-                    warnings.add("API call failed: ${validatorResponse.status}")
+                    warnings.add("VALIDATOR API call failed: ${validatorResponse.status}")
                 }
             } catch (e: Exception) {
-                warnings.add("Network error: ${e.message}")
+                warnings.add("VALIDATOR Network error: ${e.message}")
             }
 
             httpClient.close()
@@ -1185,12 +1185,12 @@ fun handleVidosResults(
     infos: MutableList<String>,
     warnings: MutableList<String>
 ) {
-    for (verifierPolicyResult in vidosResponseBody.results) {
-        if (verifierPolicyResult.status == "success") {
-            infos.add("${verifierPolicyResult.service}:${verifierPolicyResult.policy} - SUCCESS")
-        } else if (verifierPolicyResult.status == "error") {
+    for (vidosPolicyResult in vidosResponseBody.results) {
+        if (vidosPolicyResult.status == "success") {
+            infos.add("${vidosPolicyResult.service}:${vidosPolicyResult.policy} - SUCCESS")
+        } else if (vidosPolicyResult.status == "error") {
             warnings.add(
-                "${verifierPolicyResult.service}:${verifierPolicyResult.policy} - ERROR: ${verifierPolicyResult.error?.type}"
+                "${vidosPolicyResult.service}:${vidosPolicyResult.policy} - ERROR: ${vidosPolicyResult.error?.type}"
             )
         }
     }
