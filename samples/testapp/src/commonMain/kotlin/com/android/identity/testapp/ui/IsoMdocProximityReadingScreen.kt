@@ -115,11 +115,6 @@ import kotlinx.serialization.json.JsonObject
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 
-private const val VIDOS_API_KEY = "0063632ec2963446b06ca148c7f06f3e80676023d8cfed30633668fa6bdc2fa0"
-private const val GATEWAY_URL = "https://barely-certain-mammoth.ngrok-free.app"
-private const val VERIFIER_URL = "${GATEWAY_URL}/verifier"
-private const val VALIDATOR_URL = "${GATEWAY_URL}/validator"
-
 private data class ConnectionMethodPickerData(
     val showPicker: Boolean,
     val connectionMethods: List<MdocConnectionMethod>,
@@ -886,13 +881,17 @@ private fun ShowReaderResults(
                 documentDataState.value = null
                 coroutineScope.launch {
                     documentDataState.value = DocumentData.fromMdocDeviceResponseDocument(
-                        doc,
-                        app.documentTypeRepository,
-                        app.issuerTrustManager,
-                        encodedDeviceRequest,
-                        deviceResponse1,
-                        readerSessionTranscript.value!!,
-                        eReaderKey
+                        document =  doc,
+                        documentTypeRepository =  app.documentTypeRepository,
+                        issuerTrustManager = app.issuerTrustManager,
+                        vidosServiceApiKey = app.settingsModel.vidosServiceApiKey.value,
+                        vidosVerifierUrl = app.settingsModel.vidosVerifierUrl.value,
+                        vidosValidatorUrl = app.settingsModel.vidosValidatorUrl.value,
+                        encodedDeviceRequest=encodedDeviceRequest,
+                        encodedDeviceResponse =
+                            deviceResponse1,
+                        encodedSessionTranscript = readerSessionTranscript.value!!,
+                        eReaderKey =  eReaderKey
                     )
                 }
             }
@@ -997,6 +996,9 @@ private data class DocumentData(
             document: DeviceResponseParser.Document,
             documentTypeRepository: DocumentTypeRepository,
             issuerTrustManager: TrustManager,
+            vidosServiceApiKey: String,
+            vidosVerifierUrl: String,
+            vidosValidatorUrl: String,
             encodedDeviceRequest: ByteArray,
             encodedDeviceResponse: ByteArray,
             encodedSessionTranscript: ByteArray,
@@ -1014,9 +1016,9 @@ private data class DocumentData(
             }
             try {
                 val verifierResponse: HttpResponse = withContext(Dispatchers.IO) {
-                    httpClient.post("${VERIFIER_URL}/vidos/verifier/draft/verify") {
+                    httpClient.post(vidosVerifierUrl) {
                         contentType(ContentType.Application.Json)
-                        bearerAuth(VIDOS_API_KEY)
+                        bearerAuth(vidosServiceApiKey)
                         setBody(
                             VidosVerifierRequestBody(
                                 credential = encodedDeviceResponse.toBase64Url(),
@@ -1045,9 +1047,9 @@ private data class DocumentData(
             }
             try {
                 val validatorResponse: HttpResponse = withContext(Dispatchers.IO) {
-                    httpClient.post("${VALIDATOR_URL}/vidos/validator/draft/validate") {
+                    httpClient.post(vidosValidatorUrl) {
                         contentType(ContentType.Application.Json)
-                        bearerAuth(VIDOS_API_KEY)
+                        bearerAuth(vidosServiceApiKey)
                         setBody(
                             VidosValidatorRequestBody(
                                 type = "ISO18013-5.DeviceRequest",

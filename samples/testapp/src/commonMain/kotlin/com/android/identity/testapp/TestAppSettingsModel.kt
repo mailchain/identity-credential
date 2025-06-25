@@ -1,7 +1,6 @@
 package org.multipaz.testapp
 
 import org.multipaz.cbor.Cbor
-import org.multipaz.cbor.CborArray
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.toDataItem
 import org.multipaz.crypto.EcCurve
@@ -125,6 +124,11 @@ class TestAppSettingsModel private constructor(
     //
 
     private suspend fun init() {
+        bind(vidosServiceApiKey, "vidosServiceApiKey", "0063632ec2963446b06ca148c7f06f3e80676023d8cfed30633668fa6bdc2fa0")
+        val gatewayUrl = "https://barely-certain-mammoth.ngrok-free.app"
+        bind(vidosVerifierUrl, "vidosVerifierUrl", "${gatewayUrl}/verifier")
+        bind(vidosValidatorUrl, "vidosValidatorUrl", "${gatewayUrl}/validator")
+
         bind(presentmentBleCentralClientModeEnabled, "presentmentBleCentralClientModeEnabled", true)
         bind(presentmentBlePeripheralServerModeEnabled, "presentmentBlePeripheralServerModeEnabled", false)
         bind(presentmentNfcDataTransferEnabled, "presentmentNfcDataTransferEnabled", false)
@@ -152,6 +156,10 @@ class TestAppSettingsModel private constructor(
 
         bind(cloudSecureAreaUrl, "cloudSecureAreaUrl", CSA_URL_DEFAULT)
     }
+
+    val vidosServiceApiKey = MutableStateFlow<String>("")
+    val vidosVerifierUrl = MutableStateFlow<String>("")
+    val vidosValidatorUrl = MutableStateFlow<String>("")
 
     val presentmentBleCentralClientModeEnabled = MutableStateFlow<Boolean>(false)
     val presentmentBlePeripheralServerModeEnabled = MutableStateFlow<Boolean>(false)
