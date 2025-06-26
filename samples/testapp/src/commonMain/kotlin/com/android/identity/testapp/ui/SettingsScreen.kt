@@ -42,6 +42,27 @@ fun SettingsScreen(
         item {
             SettingHeadline("Vidos Options")
         }
+        item {
+            SettingTextInput(
+                title = "Vidos Service API",
+                value = app.settingsModel.vidosServiceApiKey.collectAsState().value,
+                onValueChange = { app.settingsModel.vidosServiceApiKey.value = it }
+            )
+        }
+        item {
+            SettingTextInput(
+                title = "Verifier URL",
+                value = app.settingsModel.vidosVerifierUrl.collectAsState().value,
+                onValueChange = { app.settingsModel.vidosVerifierUrl.value = it }
+            )
+        }
+        item {
+            SettingTextInput(
+                title = "Validator URL",
+                value = app.settingsModel.vidosValidatorUrl.collectAsState().value,
+                onValueChange = { app.settingsModel.vidosValidatorUrl.value = it }
+            )
+        }
         item { SettingHeadline("ISO mdoc NFC Engagement Settings") }
         item {
             if (!nfcAvailable) {
@@ -56,21 +77,6 @@ fun SettingsScreen(
                 isChecked = !app.settingsModel.presentmentUseNegotiatedHandover.collectAsState().value,
                 onCheckedChange = { app.settingsModel.presentmentUseNegotiatedHandover.value = !it },
                 enabled = nfcAvailable
-            )
-            SettingTextInput(
-                title = "Vidos Service API",
-                value = app.settingsModel.vidosServiceApiKey.collectAsState().value,
-                onValueChange = { app.settingsModel.vidosServiceApiKey.value = it }
-            )
-            SettingTextInput(
-                title = "Verifier URL",
-                value = app.settingsModel.vidosVerifierUrl.collectAsState().value,
-                onValueChange = { app.settingsModel.vidosVerifierUrl.value = it }
-            )
-            SettingTextInput(
-                title = "Validator URL",
-                value = app.settingsModel.vidosValidatorUrl.collectAsState().value,
-                onValueChange = { app.settingsModel.vidosValidatorUrl.value = it }
             )
         }
         item {
