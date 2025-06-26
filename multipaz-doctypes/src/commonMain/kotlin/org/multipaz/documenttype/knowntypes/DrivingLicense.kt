@@ -40,6 +40,7 @@ object DrivingLicense {
     const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
     const val MDL_NAMESPACE = "org.iso.18013.5.1"
     const val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
+    const val AU_QLD_NAMESPACE = "org.iso.18013.5.1.AU-QLD"
 
     /**
      * Build the Driving License Document Type. This is ISO mdoc only.
@@ -787,6 +788,29 @@ object DrivingLicense {
                 AAMVA_NAMESPACE,
                 Icon.NUMBERS,
                 null
+            )
+            .addSampleRequest(
+                id = "queensland-transportation",
+                displayName = "Queensland Transportation",
+                mdocDataElements = mapOf(
+                    MDL_NAMESPACE to mapOf(
+                        "family_name" to false,
+                        "given_name" to false,
+                        "birth_date" to false,
+                        "age_over_18" to false,
+                        "issue_date" to false,
+                        "expiry_date" to false,
+                        "issuing_country" to false,
+                        "issuing_authority" to false,
+                        "document_number" to false,
+                        "portrait" to false,
+                        "driving_privileges" to false,
+                        "un_distinguishing_sign" to false
+                    ),
+                    AU_QLD_NAMESPACE to mapOf(
+                        "physical_card_number" to false
+                    ),
+                )
             )
             .addSampleRequest(
                 id = "us-transportation",
