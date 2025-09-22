@@ -789,6 +789,16 @@ object DrivingLicense {
                 Icon.NUMBERS,
                 null
             )
+            .addMdocAttribute(
+                DocumentAttributeType.String,
+                "physical_card_number",
+                "Physical card number",
+                "A number that is used to identify the physical card",
+                true,
+                AU_QLD_NAMESPACE,
+                Icon.NUMBERS,
+                null
+            )
             .addSampleRequest(
                 id = "queensland-transportation",
                 displayName = "Queensland Transportation",
